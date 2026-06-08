@@ -36,24 +36,21 @@ pumpSlider.addEventListener("input", function () {
   }
 });
 
-// --- Điều khiển Đèn Quang Hợp NeoPixel ---
-const ledSlider = document.getElementById("ledSlider");
-const ledValue = document.getElementById("ledValue");
-const ledSliderFill = document.getElementById("ledSliderFill");
+// --- Điều khiển Đèn Quang Hợp NeoPixel (Đã sửa thành Button Toggle) ---
+const ledIcon = document.getElementById("ledIcon");
+const ledStatus = document.getElementById("ledStatus");
+let isLedOn = false;
 
-ledSlider.addEventListener("input", function () {
-  const val = parseInt(this.value);
-  ledSliderFill.style.width = val + "%";
-  
-  if (val > 0) {
-    ledValue.textContent = val + "%";
+ledIcon.addEventListener("click", () => {
+  isLedOn = !isLedOn;
+  if (isLedOn) {
+    ledIcon.classList.add("active");
+    ledStatus.textContent = "ON";
+    if (actionLedOn) eraWidget.triggerAction(actionLedOn.action, null);
   } else {
-    ledValue.textContent = "TẮT";
-  }
-  
-  // Gửi giá trị độ sáng (0 - 100) trực tiếp về cho ESP32 xử lý qua E-Ra Action
-  if (actionLedDim) {
-    eraWidget.triggerAction(actionLedDim.action, val);
+    ledIcon.classList.remove("active");
+    ledStatus.textContent = "OFF";
+    if (actionLedOff) eraWidget.triggerAction(actionLedOff.action, null);
   }
 });
 
@@ -204,15 +201,15 @@ let configTemp = null, configHumi = null, configLux = null, configSoil = null, c
 let actionFanOn = null, actionFanOff = null;
 let actionPumpOn = null, actionPumpOff = null;
 let actionAutoOn = null, actionAutoOff = null;
-let actionLedDim = null; // Khai báo hành động Dimmer Đèn
+let actionLedOn = null, actionLedOff = null; // Khai báo 2 hành động Bật/Tắt Đèn
 
 eraWidget.init({
   onConfiguration: (configuration) => {
-    configTemp = configuration.realtime_configs[0]; // Vị trí 1: Nhiệt độ
-    configHumi = configuration.realtime_configs[1]; // Vị trí 2: Độ ẩm không khí
-    configLux  = configuration.realtime_configs[2]; // Vị trí 3: Ánh sáng
-    configSoil = configuration.realtime_configs[3]; // Vị trí 4: Độ ẩm đất
-    configWater = configuration.realtime_configs[4]; // Vị trí 5: Mực nước
+    configTemp = configuration.realtime_configs[0]; 
+    configHumi = configuration.realtime_configs[1]; 
+    configLux  = configuration.realtime_configs[2]; 
+    configSoil = configuration.realtime_configs[3]; 
+    configWater = configuration.realtime_configs[4]; 
 
     actionFanOn   = configuration.actions[0];
     actionFanOff  = configuration.actions[1];
@@ -220,7 +217,10 @@ eraWidget.init({
     actionPumpOff = configuration.actions[3];
     actionAutoOn  = configuration.actions[4];
     actionAutoOff = configuration.actions[5];
-    actionLedDim  = configuration.actions[6]; // Vị trí số 7 trên Dashboard E-Ra
+    
+    // Lưu ý cấu hình trên ERa: Bạn cần tạo 2 Action (1 để gửi giá trị 1 vào V7, 1 để gửi 0 vào V7)
+    actionLedOn   = configuration.actions[6]; // Action Bật đèn (Gửi 1 tới V7)
+    actionLedOff  = configuration.actions[7]; // Action Tắt đèn (Gửi 0 tới V7)
   },
   onValues: (values) => {
     let currentTempRaw = NaN;
@@ -228,33 +228,28 @@ eraWidget.init({
 
     if (configTemp && values[configTemp.id]) {
       currentTempRaw = values[configTemp.id].value;
-      const roundedTemp = Number(currentTempRaw).toFixed(1);
-      updateTempGauge(roundedTemp);
+      updateTempGauge(Number(currentTempRaw).toFixed(1));
     }
 
     if (configHumi && values[configHumi.id]) {
       currentHumRaw = values[configHumi.id].value;
-      const roundedHum = Number(currentHumRaw).toFixed(1);
-      updateHumidGauge(roundedHum);
+      updateHumidGauge(Number(currentHumRaw).toFixed(1));
     }
 
     if (configLux && values[configLux.id]) {
-      const luxValue = Number(values[configLux.id].value).toFixed(1);
       const valLuxElement = document.getElementById("valLux");
-      if (valLuxElement) valLuxElement.textContent = luxValue + " lx";
+      if (valLuxElement) valLuxElement.textContent = Number(values[configLux.id].value).toFixed(1) + " lx";
     }
 
     if (configSoil && values[configSoil.id]) {
-      const soilValue = Number(values[configSoil.id].value).toFixed(1);
       const valSoilElement = document.getElementById("valSoil");
-      if (valSoilElement) valSoilElement.textContent = soilValue + " %";
+      if (valSoilElement) valSoilElement.textContent = Number(values[configSoil.id].value).toFixed(1) + " %";
     }
 
     if (configWater && values[configWater.id]) {
-      const waterValue = Number(values[configWater.id].value).toFixed(1);
       const waterLevelDisplay = document.getElementById("waterLevelDisplay");
       if (waterLevelDisplay) {
-        waterLevelDisplay.innerHTML = `<i class="fas fa-water"></i> Mực nước: ${waterValue} %`;
+        waterLevelDisplay.innerHTML = `<i class="fas fa-water"></i> Mực nước: ${Number(values[configWater.id].value).toFixed(1)} %`;
       }
     }
 
